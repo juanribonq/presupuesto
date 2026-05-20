@@ -805,10 +805,17 @@ class GoogleSheetsService {
 
         // Solo procesar subcategorías (tienen nombre en columna B y presupuesto)
         if (subcatName && subcatName.trim() !== '' && budgetValue) {
-          const cleanSubcatName = subcatName.trim().replace(/^[^\w]+/, '') // Remover iconos/símbolos
+          // Limpiar nombre: remover emojis, espacios extras, y símbolos al inicio
+          let cleanSubcatName = subcatName.trim()
+
+          // Remover emojis y símbolos especiales al inicio (incluyendo espacios dobles)
+          cleanSubcatName = cleanSubcatName.replace(/^[\s\uD800-\uDFFF\u2702-\u27B0\uF000-\uFFFF\u00A9\u00AE\u203C-\u3299]+/g, '')
+          cleanSubcatName = cleanSubcatName.replace(/^\s+/, '') // Trim espacios adicionales
+
           const budget = parseFloat(budgetValue)
 
-          if (!isNaN(budget) && budget > 0) {
+          if (!isNaN(budget) && budget > 0 && cleanSubcatName) {
+            console.log(`   📊 Presupuesto leído: "${cleanSubcatName}" = ${budget}`)
             subcategoryBudgets[cleanSubcatName] = budget
           }
         }
@@ -1262,8 +1269,25 @@ class GoogleSheetsService {
       const { DEFAULT_SUBCATEGORIES } = await import('../models/CategoryNew.js')
 
       // Reconstruir subcategorías con presupuestos desde el Sheet
+      console.log('   → Reconstruyendo subcategorías con presupuestos...')
       restoredData.subcategories = DEFAULT_SUBCATEGORIES.map(defaultSub => {
-        const budget = budgetData.subcategoryBudgets[defaultSub.name] || 0
+        // Buscar presupuesto por nombre exacto
+        let budget = budgetData.subcategoryBudgets[defaultSub.name] || 0
+
+        // Si no se encuentra, intentar buscar sin tener en cuenta espacios extras
+        if (budget === 0) {
+          const normalizedName = defaultSub.name.trim().toLowerCase()
+          const matchingKey = Object.keys(budgetData.subcategoryBudgets).find(key =>
+            key.trim().toLowerCase() === normalizedName
+          )
+          if (matchingKey) {
+            budget = budgetData.subcategoryBudgets[matchingKey]
+            console.log(`   ✅ Presupuesto encontrado para "${defaultSub.name}": ${budget} (match: "${matchingKey}")`)
+          }
+        } else {
+          console.log(`   ✅ Presupuesto restaurado: "${defaultSub.name}" = ${budget}`)
+        }
+
         return {
           id: defaultSub.id || crypto.randomUUID(),
           mainCategoryId: defaultSub.mainCategoryId,
