@@ -89,6 +89,12 @@ class GoogleSheetsService {
           },
           {
             properties: {
+              title: 'Ingresos',
+              gridProperties: { frozenRowCount: 1 }
+            }
+          },
+          {
+            properties: {
               title: SHEET_NAMES.CURRENT,
               gridProperties: { frozenRowCount: 1 }
             }
@@ -193,6 +199,14 @@ class GoogleSheetsService {
       range: `Presupuesto!A1:H1`,
       values: [
         ['Categoría', 'Subcategoría', 'Presupuesto', 'Gastado', 'Disponible', '% Usado', '% del Ingreso', 'Estado']
+      ]
+    })
+
+    // Hoja de Ingresos (nueva)
+    requests.push({
+      range: `Ingresos!A1:E1`,
+      values: [
+        ['ID', 'Mes', 'Concepto', 'Monto', 'Descripción']
       ]
     })
 
@@ -580,22 +594,28 @@ class GoogleSheetsService {
    *
    * ⚠️ IMPORTANTE: Cualquier cambio manual en Google Sheets será sobrescrito
    */
-  async pushToSheets(localExpenses) {
+  async pushToSheets(localExpenses, localIncomes = []) {
     if (!this.spreadsheetId) {
       throw new Error('No hay spreadsheet activo')
     }
 
     console.log('⬆️ Iniciando sincronización unidireccional (App → Sheets)...')
-    console.log(`📤 Subiendo ${localExpenses.length} gastos locales a Google Sheets`)
+    console.log(`📤 Subiendo ${localExpenses.length} gastos y ${localIncomes.length} ingresos a Google Sheets`)
 
     try {
-      // Solo subir datos locales (sobrescribir todo en Sheets)
+      // Subir gastos
       await this.writeCurrentMonthExpenses(localExpenses)
 
-      console.log(`✅ Sincronización completada: ${localExpenses.length} gastos subidos`)
+      // Subir ingresos
+      if (localIncomes.length > 0) {
+        await this.writeIncomesToSheets(localIncomes)
+      }
+
+      console.log(`✅ Sincronización completada: ${localExpenses.length} gastos y ${localIncomes.length} ingresos subidos`)
       eventBus.emit('sheets:sync-complete', {
         direction: 'push-only',
-        count: localExpenses.length
+        count: localExpenses.length,
+        incomesCount: localIncomes.length
       })
 
       return localExpenses
@@ -1065,6 +1085,238 @@ class GoogleSheetsService {
 
     } catch (error) {
       console.error('❌ Error sincronizando presupuesto:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Leer ingresos desde Google Sheets
+   */
+  async readIncomesFromSheets() {
+    if (!this.spreadsheetId) {
+      throw new Error('No hay spreadsheet activo')
+    }
+
+    console.log('💵 Leyendo ingresos desde Google Sheets...')
+
+    try {
+      // Verificar si la hoja existe
+      const exists = await this.sheetExists('Ingresos')
+      if (!exists) {
+        console.log('ℹ️ Hoja "Ingresos" no existe, creándola...')
+        await this.createSheet('Ingresos')
+
+        // Inicializar headers
+        await gapi.client.sheets.spreadsheets.values.update({
+          spreadsheetId: this.spreadsheetId,
+          range: 'Ingresos!A1:E1',
+          valueInputOption: 'RAW',
+          resource: {
+            values: [['ID', 'Mes', 'Concepto', 'Monto', 'Descripción']]
+          }
+        })
+
+        return []
+      }
+
+      const response = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: 'Ingresos!A2:E1000'
+      })
+
+      const rows = response.result.values || []
+      const incomes = rows.map(row => ({
+        id: row[0],
+        month: row[1],
+        concept: row[2],
+        amount: parseFloat(row[3]) || 0,
+        description: row[4] || ''
+      }))
+
+      console.log(`✅ ${incomes.length} ingresos leídos desde Sheets`)
+      return incomes
+
+    } catch (error) {
+      console.error('❌ Error leyendo ingresos:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Escribir ingresos a Google Sheets
+   */
+  async writeIncomesToSheets(incomes) {
+    if (!this.spreadsheetId) {
+      throw new Error('No hay spreadsheet activo')
+    }
+
+    console.log(`💵 Escribiendo ${incomes.length} ingresos a Sheets...`)
+
+    try {
+      // Verificar si la hoja existe
+      const exists = await this.sheetExists('Ingresos')
+      if (!exists) {
+        console.log('ℹ️ Hoja "Ingresos" no existe, creándola...')
+        await this.createSheet('Ingresos')
+
+        // Inicializar headers
+        await gapi.client.sheets.spreadsheets.values.update({
+          spreadsheetId: this.spreadsheetId,
+          range: 'Ingresos!A1:E1',
+          valueInputOption: 'RAW',
+          resource: {
+            values: [['ID', 'Mes', 'Concepto', 'Monto', 'Descripción']]
+          }
+        })
+      }
+
+      // Preparar datos
+      const rows = incomes.map(income => [
+        income.id,
+        income.month,
+        income.concept,
+        income.amount,
+        income.description || ''
+      ])
+
+      // Limpiar hoja (mantener header)
+      await gapi.client.sheets.spreadsheets.values.clear({
+        spreadsheetId: this.spreadsheetId,
+        range: 'Ingresos!A2:E1000'
+      })
+
+      // Escribir nuevos datos
+      if (rows.length > 0) {
+        await gapi.client.sheets.spreadsheets.values.update({
+          spreadsheetId: this.spreadsheetId,
+          range: `Ingresos!A2:E${rows.length + 1}`,
+          valueInputOption: 'RAW',
+          resource: {
+            values: rows
+          }
+        })
+      }
+
+      console.log(`✅ ${incomes.length} ingresos escritos a Sheets`)
+      return true
+
+    } catch (error) {
+      console.error('❌ Error escribiendo ingresos:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 🔄 RESTAURAR TODOS LOS DATOS DESDE GOOGLE SHEETS
+   *
+   * Lee todos los datos desde Google Sheets y los retorna para ser guardados en IndexedDB.
+   * Útil para sincronizar un nuevo dispositivo o recuperar datos.
+   *
+   * ⚠️ IMPORTANTE: Este método NO modifica IndexedDB directamente.
+   * Retorna los datos para que StorageService los importe.
+   */
+  async restoreAllFromSheets() {
+    if (!this.spreadsheetId) {
+      throw new Error('No hay spreadsheet activo')
+    }
+
+    console.log('📥 Restaurando todos los datos desde Google Sheets...')
+
+    try {
+      const restoredData = {
+        config: {},
+        expenses: [],
+        subcategories: [],
+        budgets: {},
+        incomes: []
+      }
+
+      // 1. Leer configuración
+      console.log('   → Leyendo configuración...')
+      const config = await this.readConfig()
+      restoredData.config = config
+
+      // 2. Leer gastos del mes actual
+      console.log('   → Leyendo gastos del mes actual...')
+      const currentExpenses = await this.readCurrentMonthExpenses()
+      restoredData.expenses = currentExpenses.map(exp => ({
+        id: exp.id,
+        date: exp.date,
+        category: exp.category,
+        subcategory: exp.subcategory,
+        description: exp.description,
+        amount: exp.amount,
+        notes: exp.notes,
+        month: this.getCurrentMonth(),
+        synced: true,
+        syncedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }))
+
+      // 3. Leer presupuestos desde hoja "Presupuesto"
+      console.log('   → Leyendo presupuestos...')
+      const budgetData = await this.readBudgetFromSheets()
+
+      // Importar DEFAULT_SUBCATEGORIES para estructura
+      const { DEFAULT_SUBCATEGORIES } = await import('../models/CategoryNew.js')
+
+      // Reconstruir subcategorías con presupuestos desde el Sheet
+      restoredData.subcategories = DEFAULT_SUBCATEGORIES.map(defaultSub => {
+        const budget = budgetData.subcategoryBudgets[defaultSub.name] || 0
+        return {
+          id: defaultSub.id || crypto.randomUUID(),
+          mainCategoryId: defaultSub.mainCategoryId,
+          name: defaultSub.name,
+          icon: defaultSub.icon,
+          budget: budget,
+          details: defaultSub.details || [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      })
+
+      // Guardar presupuesto del mes actual
+      const currentMonth = this.getCurrentMonth()
+      const subcategoryBudgets = {}
+      restoredData.subcategories.forEach(sub => {
+        subcategoryBudgets[sub.id] = sub.budget
+      })
+
+      restoredData.budgets[currentMonth] = {
+        month: currentMonth,
+        total: budgetData.totalIncome,
+        subcategories: subcategoryBudgets,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      // 4. Leer ingresos desde hoja "Ingresos"
+      console.log('   → Leyendo ingresos...')
+      const allIncomes = await this.readIncomesFromSheets()
+
+      // Filtrar solo los ingresos del mes actual
+      restoredData.incomes = allIncomes
+        .filter(income => income.month === currentMonth)
+        .map(income => ({
+          id: income.id,
+          month: income.month,
+          concept: income.concept,
+          amount: income.amount,
+          description: income.description,
+          createdAt: new Date().toISOString()
+        }))
+
+      console.log(`✅ Datos restaurados desde Sheets:`)
+      console.log(`   - ${restoredData.expenses.length} gastos`)
+      console.log(`   - ${restoredData.subcategories.length} subcategorías`)
+      console.log(`   - ${restoredData.incomes.length} ingresos`)
+      console.log(`   - Presupuesto total: ${budgetData.totalIncome}`)
+
+      return restoredData
+
+    } catch (error) {
+      console.error('❌ Error restaurando datos desde Sheets:', error)
       throw error
     }
   }

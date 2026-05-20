@@ -2403,8 +2403,11 @@ async function handleSync() {
     // Obtener gastos locales del mes actual
     const localExpenses = await storageService.getCurrentMonthExpenses()
 
-    // Sincronización UNIDIRECCIONAL: Solo subir a Sheets
-    await googleSheetsService.pushToSheets(localExpenses)
+    // Obtener ingresos locales del mes actual
+    const localIncomes = await storageService.getCurrentMonthIncomes()
+
+    // Sincronización UNIDIRECCIONAL: Solo subir a Sheets (gastos + ingresos)
+    await googleSheetsService.pushToSheets(localExpenses, localIncomes)
 
     // Marcar todos los gastos locales como sincronizados
     const expenseIds = localExpenses.map(e => e.id)
@@ -2434,7 +2437,7 @@ async function handleSync() {
       console.warn('⚠️ Error sincronizando presupuesto:', error)
     }
 
-    showToast(`✅ ${localExpenses.length} gastos subidos a Sheets`, 'success')
+    showToast(`✅ ${localExpenses.length} gastos y ${localIncomes.length} ingresos subidos a Sheets`, 'success')
     console.log('✅ Sincronización unidireccional completada')
 
     // Actualizar vista actual
@@ -3075,9 +3078,25 @@ async function showSettingsView() {
               </div>
             </div>
           </div>
-          <button id="force-sync-btn" class="btn btn-secondary btn-block" ${!appState.spreadsheetConnected ? 'disabled' : ''}>
-            🔄 Sincronizar Ahora
-          </button>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <button id="force-sync-btn" class="btn btn-secondary btn-block" ${!appState.spreadsheetConnected ? 'disabled' : ''}>
+              🔄 Sincronizar Ahora
+            </button>
+            <button id="restore-from-sheets-btn" class="btn btn-primary btn-block" ${!appState.spreadsheetConnected ? 'disabled' : ''}>
+              📥 Restaurar desde Sheets
+            </button>
+          </div>
+          <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 0.75rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px;">
+            <strong>💡 Uso Multi-Dispositivo:</strong><br>
+            • <strong>Sincronizar Ahora:</strong> Sube cambios locales a Sheets<br>
+            • <strong>Restaurar desde Sheets:</strong> Descarga datos de Sheets a este dispositivo<br>
+            <br>
+            Para usar en iPhone y PC:<br>
+            1. Haz cambios en iPhone → Sincronizar<br>
+            2. Abre en PC → Restaurar desde Sheets<br>
+            3. Haz cambios en PC → Sincronizar<br>
+            4. Regresas a iPhone → Restaurar desde Sheets
+          </div>
         </div>
       </div>
 
@@ -3166,6 +3185,11 @@ async function showSettingsView() {
     forceSyncBtn.addEventListener('click', handleSync)
   }
 
+  const restoreFromSheetsBtn = document.getElementById('restore-from-sheets-btn')
+  if (restoreFromSheetsBtn) {
+    restoreFromSheetsBtn.addEventListener('click', handleRestoreFromSheets)
+  }
+
   const exportDataBtn = document.getElementById('export-data-btn')
   if (exportDataBtn) {
     exportDataBtn.addEventListener('click', handleExportData)
@@ -3195,6 +3219,125 @@ async function showSettingsView() {
 
   // Actualizar navegación
   updateNavigation('settings')
+}
+
+/**
+ * 🔄 RESTAURAR DATOS DESDE GOOGLE SHEETS
+ *
+ * Muestra modal de confirmación y ejecuta la restauración completa de datos.
+ * ⚠️ ADVERTENCIA: Sobrescribe todos los datos locales con los de Sheets.
+ */
+async function handleRestoreFromSheets() {
+  console.log('📥 Iniciando restauración desde Google Sheets...')
+
+  if (!appState.spreadsheetConnected) {
+    showToast('Primero conecta a Google Sheets', 'warning')
+    return
+  }
+
+  // Mostrar modal de confirmación con advertencia
+  const modal = document.getElementById('modal')
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2>📥 Restaurar desde Google Sheets</h2>
+        <button id="modal-close" class="btn-icon">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Advertencia importante -->
+        <div style="background: var(--color-danger)15; padding: 1.5rem; border-radius: 12px; border-left: 4px solid var(--color-danger); margin-bottom: 1.5rem;">
+          <div style="font-weight: 700; font-size: 16px; margin-bottom: 0.75rem; color: var(--color-danger);">
+            ⚠️ ADVERTENCIA IMPORTANTE
+          </div>
+          <div style="font-size: 14px; color: var(--text-primary); line-height: 1.6;">
+            Esta acción <strong>SOBRESCRIBIRÁ TODOS</strong> los datos locales en este dispositivo con los datos de Google Sheets.
+          </div>
+        </div>
+
+        <!-- Qué se va a restaurar -->
+        <div style="margin-bottom: 1.5rem;">
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 0.75rem;">
+            📦 Datos que se restaurarán:
+          </div>
+          <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 13px;">
+              <div>✓ Gastos del mes actual</div>
+              <div>✓ Presupuestos de todas las subcategorías</div>
+              <div>✓ Ingresos del mes</div>
+              <div>✓ Configuración general</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cuándo usar esta función -->
+        <div style="margin-bottom: 1.5rem;">
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 0.75rem;">
+            💡 Cuándo usar esta función:
+          </div>
+          <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+            • Al abrir la app en un <strong>nuevo dispositivo</strong><br>
+            • Cuando quieras <strong>sincronizar datos</strong> desde otro dispositivo<br>
+            • Para <strong>recuperar datos</strong> después de limpiar el navegador<br>
+            • Si hiciste cambios en otro dispositivo y los quieres aquí
+          </div>
+        </div>
+
+        <!-- Recomendación -->
+        <div style="background: var(--color-info)15; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--color-info);">
+          <div style="font-size: 13px; color: var(--text-primary);">
+            <strong>💾 Recomendación:</strong> Si tienes datos locales importantes que no has sincronizado, presiona <strong>"Sincronizar Ahora"</strong> antes de restaurar.
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="cancel-restore-btn" class="btn btn-secondary">
+          Cancelar
+        </button>
+        <button id="confirm-restore-btn" class="btn btn-danger">
+          Restaurar Datos
+        </button>
+      </div>
+    </div>
+  `
+
+  modal.style.display = 'flex'
+
+  document.getElementById('modal-close').addEventListener('click', hideModal)
+  document.getElementById('cancel-restore-btn').addEventListener('click', hideModal)
+  document.getElementById('confirm-restore-btn').addEventListener('click', async () => {
+    try {
+      showLoading(true)
+      hideModal()
+
+      console.log('   → Descargando datos desde Google Sheets...')
+      const restoredData = await googleSheetsService.restoreAllFromSheets()
+
+      console.log('   → Guardando datos en IndexedDB...')
+      const summary = await storageService.restoreFromSheets(restoredData)
+
+      // Actualizar estado global
+      appState.subcategories = await storageService.getAllSubcategories()
+      appState.incomes = await storageService.getCurrentMonthIncomes()
+
+      console.log('✅ Restauración completada exitosamente')
+      showToast(`Datos restaurados: ${summary.expensesRestored} gastos, ${summary.subcategoriesRestored} subcategorías`, 'success')
+
+      // Recargar vista actual (Dashboard o Settings)
+      if (appState.currentView === 'settings') {
+        await showSettingsView()
+      } else {
+        await showDashboardView()
+      }
+
+    } catch (error) {
+      console.error('❌ Error restaurando datos:', error)
+      showToast(`Error al restaurar datos: ${error.message}`, 'error')
+    } finally {
+      showLoading(false)
+    }
+  })
 }
 
 /**

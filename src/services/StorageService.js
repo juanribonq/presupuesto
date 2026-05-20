@@ -872,6 +872,88 @@ class StorageService {
       canClose: unsyncedCount === 0 && expenses.length > 0
     }
   }
+
+  /**
+   * 🔄 RESTAURAR DATOS DESDE GOOGLE SHEETS
+   *
+   * Reemplaza todos los datos locales con los datos provenientes de Google Sheets.
+   * ⚠️ ADVERTENCIA: Esto SOBRESCRIBIRÁ todos los datos locales actuales.
+   *
+   * @param {Object} restoredData - Datos obtenidos desde googleSheetsService.restoreAllFromSheets()
+   * @returns {Object} Resumen de datos restaurados
+   */
+  async restoreFromSheets(restoredData) {
+    this.ensureInitialized()
+
+    console.log('📥 Restaurando datos en IndexedDB desde Google Sheets...')
+
+    try {
+      // 1. Limpiar todas las tablas
+      console.log('   → Limpiando datos actuales...')
+      const tx1 = this.db.transaction(
+        ['expenses', 'subcategories', 'budgets', 'incomes'],
+        'readwrite'
+      )
+
+      await tx1.objectStore('expenses').clear()
+      await tx1.objectStore('subcategories').clear()
+      await tx1.objectStore('budgets').clear()
+      await tx1.objectStore('incomes').clear()
+      await tx1.done
+
+      // 2. Restaurar gastos
+      console.log(`   → Restaurando ${restoredData.expenses.length} gastos...`)
+      for (const expense of restoredData.expenses) {
+        await this.db.add('expenses', expense)
+      }
+
+      // 3. Restaurar subcategorías
+      console.log(`   → Restaurando ${restoredData.subcategories.length} subcategorías...`)
+      for (const subcategory of restoredData.subcategories) {
+        await this.db.add('subcategories', subcategory)
+      }
+
+      // 4. Restaurar presupuestos
+      console.log(`   → Restaurando presupuestos...`)
+      for (const [month, budget] of Object.entries(restoredData.budgets)) {
+        await this.db.put('budgets', budget)
+      }
+
+      // 5. Restaurar ingresos
+      console.log(`   → Restaurando ${restoredData.incomes.length} ingresos...`)
+      for (const income of restoredData.incomes) {
+        await this.db.add('incomes', income)
+      }
+
+      // 6. Registrar restauración en log de sincronización
+      await this.logSync('restore', {
+        expensesCount: restoredData.expenses.length,
+        subcategoriesCount: restoredData.subcategories.length,
+        incomesCount: restoredData.incomes.length,
+        direction: 'sheets-to-app'
+      })
+
+      const summary = {
+        success: true,
+        expensesRestored: restoredData.expenses.length,
+        subcategoriesRestored: restoredData.subcategories.length,
+        incomesRestored: restoredData.incomes.length,
+        budgetsRestored: Object.keys(restoredData.budgets).length
+      }
+
+      console.log('✅ Datos restaurados exitosamente:')
+      console.log(`   - ${summary.expensesRestored} gastos`)
+      console.log(`   - ${summary.subcategoriesRestored} subcategorías`)
+      console.log(`   - ${summary.incomesRestored} ingresos`)
+      console.log(`   - ${summary.budgetsRestored} presupuestos`)
+
+      return summary
+
+    } catch (error) {
+      console.error('❌ Error restaurando datos desde Sheets:', error)
+      throw error
+    }
+  }
 }
 
 // Exportar instancia única (singleton)

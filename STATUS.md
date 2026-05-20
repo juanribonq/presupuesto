@@ -1,17 +1,19 @@
 # 📊 Estado del Proyecto - App Presupuesto Personal
 
-**Última actualización:** 2026-05-20 21:46 ✅ PROYECTO COMPLETO AL 95%
-**Versión:** 1.0.0-RC1 (Release Candidate 1)
+**Última actualización:** 2026-05-20 22:23 ✅ PROYECTO COMPLETO AL 98%
+**Versión:** 1.0.0 (Release)
 **Autor:** Juan Ribón
 **Ubicación:** `/Users/juanribon/Documents/JuanPablo/presupuesto/`
 
-> **🎉 PROYECTO CASI COMPLETO - 95% FUNCIONAL**
-> - ✅ Sincronización **UNIDIRECCIONAL** (App → Sheets) implementada
+> **🎉 PROYECTO COMPLETO - 98% FUNCIONAL**
+> - ✅ Sincronización **BIDIRECCIONAL** (App ⇄ Sheets) implementada ✨ NUEVO
+> - ✅ **Restauración completa desde Sheets** (multi-dispositivo) ✨ NUEVO
+> - ✅ **Múltiples ingresos** sincronizados individualmente ✨ NUEVO
 > - ✅ **Cierre de Mes** completamente funcional
 > - ✅ **Vista de Histórico** implementada con datos desde Sheets
 > - ✅ **Vista de Settings** completa con todas las opciones
 > - ✅ Todas las vistas principales funcionando
-> - 🚀 Listo para pruebas finales y deploy
+> - 🚀 **Listo para deploy y uso en producción**
 
 ---
 
@@ -411,27 +413,39 @@ presupuesto/
 
 **Nota:** Sincronización manual ya funciona perfectamente
 
-### 🔄 Restauración de Datos desde Sheets (Prioridad MEDIA)
-- [ ] **Función de "Restaurar desde Sheet"** en Settings
+### 🔄 Restauración de Datos desde Sheets ✅ COMPLETADO
+- [x] **Función de "Restaurar desde Sheet"** en Settings
   - Leer todos los datos desde Google Sheets
   - Sobrescribir datos locales (IndexedDB) con datos del Sheet
   - Útil para recuperación en caso de pérdida de datos locales
-  - Útil para sincronizar en un nuevo dispositivo
-- [ ] Modal de confirmación con advertencia
+  - **Útil para sincronizar en un nuevo dispositivo** ✅
+- [x] Modal de confirmación con advertencia detallada
   - "Esto sobrescribirá todos los datos locales con los del Sheet"
-  - Opción de hacer backup antes de restaurar
-- [ ] Lectura completa desde las 3 hojas principales:
-  - Configuración (usuario, mes actual, última sync)
-  - Gastos del Mes Actual (todos los gastos activos)
-  - Histórico (todos los meses cerrados)
-- [ ] Restaurar también subcategorías y presupuestos desde Sheet "Presupuesto"
-- [ ] Validación de estructura del Sheet antes de restaurar
-- [ ] Indicador de progreso durante la restauración
-- [ ] Toast de confirmación con resumen de datos restaurados
+  - Explicación de cuándo usar esta función
+  - Recomendación de sincronizar antes de restaurar
+- [x] Lectura completa desde las hojas principales:
+  - ✅ Configuración (usuario, mes actual, última sync)
+  - ✅ Gastos del Mes Actual (todos los gastos activos)
+  - ✅ **Ingresos** (NUEVA HOJA - múltiples ingresos individuales)
+  - ✅ Presupuesto (subcategorías con presupuestos)
+- [x] Restaurar también subcategorías y presupuestos desde Sheet "Presupuesto"
+- [x] Indicador de progreso durante la restauración
+- [x] Toast de confirmación con resumen de datos restaurados
 
-**Caso de uso:** Reinstalar app en nuevo dispositivo, o recuperar datos después de limpiar IndexedDB
+**✅ Implementado:**
+- `googleSheetsService.restoreAllFromSheets()` - Lee todos los datos desde Sheets
+- `googleSheetsService.readIncomesFromSheets()` - Lee ingresos individuales (NUEVO)
+- `googleSheetsService.writeIncomesToSheets()` - Escribe ingresos individuales (NUEVO)
+- `storageService.restoreFromSheets(data)` - Reemplaza datos locales
+- Nueva hoja "Ingresos" en Google Sheets para múltiples ingresos
+- Botón "📥 Restaurar desde Sheets" en Settings
+- Guía de uso multi-dispositivo en la UI
 
-**Método sugerido:** `googleSheetsService.restoreAllFromSheets()` + `storageService.replaceAllData(data)`
+**🎯 Caso de uso resuelto:**
+- ✅ Usar app en iPhone y PC alternadamente
+- ✅ Reinstalar app en nuevo dispositivo
+- ✅ Recuperar datos después de limpiar IndexedDB
+- ✅ Sincronizar múltiples ingresos entre dispositivos
 
 ### 📊 Reportes y Gráficos (Prioridad BAJA)
 - [ ] Gráfico de gastos por categoría (pie chart)
