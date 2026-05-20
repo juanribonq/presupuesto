@@ -2,11 +2,14 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  base: './',
+  base: '/presupuesto/',
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/*.png', 'splash/*.png'],
+      injectRegister: 'auto',
+      devOptions: {
+        enabled: false
+      },
       manifest: {
         name: 'App Presupuesto Personal',
         short_name: 'Presupuesto',
@@ -15,79 +18,49 @@ export default defineConfig({
         background_color: '#FFFFFF',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: './',
-        scope: './',
+        start_url: '/presupuesto/',
+        scope: '/presupuesto/',
         icons: [
           {
-            src: './icons/icon-72.png',
+            src: '/presupuesto/icons/icon-72.png',
             sizes: '72x72',
             type: 'image/png'
           },
           {
-            src: './icons/icon-96.png',
+            src: '/presupuesto/icons/icon-96.png',
             sizes: '96x96',
             type: 'image/png'
           },
           {
-            src: './icons/icon-128.png',
+            src: '/presupuesto/icons/icon-128.png',
             sizes: '128x128',
             type: 'image/png'
           },
           {
-            src: './icons/icon-144.png',
+            src: '/presupuesto/icons/icon-144.png',
             sizes: '144x144',
             type: 'image/png'
           },
           {
-            src: './icons/icon-152.png',
+            src: '/presupuesto/icons/icon-152.png',
             sizes: '152x152',
             type: 'image/png'
           },
           {
-            src: './icons/icon-192.png',
+            src: '/presupuesto/icons/icon-192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: './icons/icon-384.png',
+            src: '/presupuesto/icons/icon-384.png',
             sizes: '384x384',
             type: 'image/png'
           },
           {
-            src: './icons/icon-512.png',
+            src: '/presupuesto/icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
-          }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/apis\.google\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'google-api-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 // 24 horas
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/sheets\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'sheets-api-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 5 // 5 minutos
-              }
-            }
           }
         ]
       }
