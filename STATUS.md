@@ -1,14 +1,15 @@
 # 📊 Estado del Proyecto - App Presupuesto Personal
 
-**Última actualización:** 2026-05-20 22:23 ✅ PROYECTO COMPLETO AL 98%
+**Última actualización:** 2026-05-20 23:15 ✅ PROYECTO COMPLETO AL 99%
 **Versión:** 1.0.0 (Release)
 **Autor:** Juan Ribón
 **Ubicación:** `/Users/juanribon/Documents/JuanPablo/presupuesto/`
 
-> **🎉 PROYECTO COMPLETO - 98% FUNCIONAL**
-> - ✅ Sincronización **BIDIRECCIONAL** (App ⇄ Sheets) implementada ✨ NUEVO
-> - ✅ **Restauración completa desde Sheets** (multi-dispositivo) ✨ NUEVO
-> - ✅ **Múltiples ingresos** sincronizados individualmente ✨ NUEVO
+> **🎉 PROYECTO COMPLETO - 99% FUNCIONAL**
+> - ✅ Sincronización **BIDIRECCIONAL** (App ⇄ Sheets) implementada ✨
+> - ✅ **Restauración completa desde Sheets** (multi-dispositivo) ✨
+> - ✅ **Múltiples ingresos** sincronizados individualmente ✨
+> - ✅ **Conexión por URL completa** (extrae ID automáticamente) ✨ NUEVO
 > - ✅ **Cierre de Mes** completamente funcional
 > - ✅ **Vista de Histórico** implementada con datos desde Sheets
 > - ✅ **Vista de Settings** completa con todas las opciones
@@ -583,9 +584,11 @@ npm run lint         # (cuando se configure)
 | PWA Config | 100% | ✅ Completo | Manifest + icons |
 | Service Worker | 100% | ✅ Completo | registerServiceWorker |
 | GitHub Actions | 100% | ✅ Completo | deploy.yml configurado |
-| GitHub Pages | 0% | 🔴 Pendiente | Listo para desplegar |
+| GitHub Pages | 100% | ✅ Completo | Desplegado y funcional |
+| **UX/Mejoras** | | | |
+| Conexión por URL completa | 100% | ✅ Completo | ✨ Extracción automática de ID |
 
-**Progreso Total: ~95%** 🎉🎉
+**Progreso Total: ~99%** 🎉🎉🎉
 
 **Leyenda:**
 - ✨ = Funcionalidad descubierta (no estaba documentada)
@@ -747,7 +750,28 @@ Se simplificó la estrategia de sincronización para eliminar complejidad y conf
 
 ## 📅 Historial de Cambios
 
-### 2026-05-20 22:00 - v1.0.0-RC1 ✅ **PROYECTO COMPLETO AL 95%** (Actual)
+### 2026-05-20 23:15 - v1.0.0 ✅ **MEJORA UX: URL COMPLETA DE GOOGLE SHEETS** (Actual)
+- 🎯 **Mejora de Experiencia de Usuario:**
+  - ✅ Ahora se puede pegar la **URL completa** del Google Sheet al conectar
+  - ✅ La app **extrae automáticamente el ID** de la URL
+  - ✅ Soporta múltiples formatos:
+    - URL completa: `https://docs.google.com/spreadsheets/d/ID/edit?gid=...#gid=...`
+    - URL sin parámetros: `https://docs.google.com/spreadsheets/d/ID/edit`
+    - URL sin /edit: `https://docs.google.com/spreadsheets/d/ID`
+    - Solo ID directo: `1abc123xyz456` (compatibilidad)
+  - ✅ Validación con regex: `/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/`
+  - ✅ Mensaje de error claro si la URL es inválida
+- 📝 **Archivo modificado:**
+  - `main.js` (función `handleConnectSheet()` línea ~607):
+    - Cambiado prompt para solicitar URL completa
+    - Implementado parsing automático con regex
+    - Fallback a ID directo para compatibilidad
+    - Mejor UX: usuarios solo copian-pegan desde navegador
+- 🎯 **Beneficio:** Mucho más fácil para usuarios multi-dispositivo
+- 📊 **Progreso:** 98% → **99%**
+- 🚀 **Deploy:** Desplegado a GitHub Pages
+
+### 2026-05-20 22:00 - v1.0.0-RC1 ✅ **PROYECTO COMPLETO AL 98%**
 - 🎉 **TRES FUNCIONALIDADES CRÍTICAS IMPLEMENTADAS:**
   - ✅ **Cierre de Mes** completo (StorageService + main.js)
     - Modal de confirmación con resumen detallado
@@ -853,18 +877,19 @@ Se simplificó la estrategia de sincronización para eliminar complejidad y conf
 
 ---
 
-**🎯 Estado Actual:** ✅ **Proyecto 95% completo - Release Candidate 1**
+**🎯 Estado Actual:** ✅ **Proyecto 99% completo - Release v1.0.0**
 
-**📊 Progreso Real:** ~95% (todas las funcionalidades core implementadas)
+**📊 Progreso Real:** ~99% (todas las funcionalidades core implementadas + mejoras UX)
 
-**✅ Último Cambio:** Implementadas 3 funcionalidades críticas: **Cierre de Mes, Vista Histórico, Vista Settings**
+**✅ Último Cambio:** Mejora UX: **Conexión por URL completa de Google Sheets** (extracción automática de ID)
 
 **⚠️ Próximas Tareas Opcionales:**
 1. ~~**Vista de Histórico**~~ - ✅ **COMPLETADA**
 2. ~~**Vista de Settings**~~ - ✅ **COMPLETADA**
 3. ~~**Funcionalidad de Cierre de Mes**~~ - ✅ **COMPLETADA**
-4. **Deploy a GitHub Pages** - Configuración lista, listo para desplegar
-5. **Testing** - Pruebas unitarias e integración (opcional)
-6. **Gráficos y reportes avanzados** - Mejoras visuales (opcional)
+4. ~~**Deploy a GitHub Pages**~~ - ✅ **COMPLETADA** (desplegado y funcional)
+5. ~~**Conexión por URL completa**~~ - ✅ **COMPLETADA** (mejora UX)
+6. **Testing** - Pruebas unitarias e integración (opcional)
+7. **Gráficos y reportes avanzados** - Mejoras visuales (opcional)
 
-**Última revisión:** 2026-05-20 22:00 (v1.0.0-RC1 - Proyecto 95% completo)
+**Última revisión:** 2026-05-20 23:15 (v1.0.0 - Proyecto 99% completo)
