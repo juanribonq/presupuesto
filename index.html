@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4A90E2">
+  <meta name="description" content="Gestiona tu presupuesto personal con sincronización a Google Sheets">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Presupuesto">
+
+  <title>App Presupuesto Personal</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/icons/icon-32.png">
+
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="/icons/icon-152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
+
+  <!-- Manifest -->
+  <link rel="manifest" href="/presupuesto/manifest.webmanifest">
+
+  <!-- Styles -->
+  <script type="module" crossorigin src="/presupuesto/assets/index-CA69viPp.js"></script>
+  <link rel="stylesheet" crossorigin href="/presupuesto/assets/index-Hb1u5XeG.css">
+</head>
+<body>
+  <!-- App Container -->
+  <div id="app">
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+      <div class="loading-spinner"></div>
+      <p>Cargando...</p>
+    </div>
+
+    <!-- Header -->
+    <header id="app-header" class="header" style="display: none;">
+      <button class="header-icon-btn" id="menu-btn">
+        <span class="icon">≡</span>
+      </button>
+      <h1 class="header-title" id="header-title">Presupuesto</h1>
+      <div class="header-actions">
+        <button class="header-icon-btn" id="sync-btn" title="Sincronizar">
+          <span class="icon">🔄</span>
+        </button>
+        <button class="header-icon-btn" id="user-btn" title="Perfil">
+          <span class="icon">👤</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="app-content" class="main-content" style="display: none;">
+      <!-- Views will be rendered here -->
+    </main>
+
+    <!-- Floating Action Button -->
+    <button id="fab" class="btn-fab" style="display: none;" title="Nuevo Gasto">
+      <span class="icon">+</span>
+    </button>
+
+    <!-- Bottom Navigation -->
+    <nav id="bottom-nav" class="bottom-nav" style="display: none;">
+      <button class="bottom-nav-item active" data-view="dashboard">
+        <span class="icon">🏠</span>
+        <span class="label">Inicio</span>
+      </button>
+      <button class="bottom-nav-item" data-view="expenses">
+        <span class="icon">💰</span>
+        <span class="label">Gastos</span>
+      </button>
+      <button class="bottom-nav-item" data-view="categories">
+        <span class="icon">🏷️</span>
+        <span class="label">Categorías</span>
+      </button>
+      <button class="bottom-nav-item" data-view="history">
+        <span class="icon">📅</span>
+        <span class="label">Histórico</span>
+      </button>
+      <button class="bottom-nav-item" data-view="settings">
+        <span class="icon">⚙️</span>
+        <span class="label">Más</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Modal Container -->
+  <div id="modal"></div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Main Script -->
+</body>
+</html>
