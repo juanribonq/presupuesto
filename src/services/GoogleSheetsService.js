@@ -22,6 +22,53 @@ class GoogleSheetsService {
   }
 
   /**
+   * Asegurar que el token de acceso es válido antes de hacer llamadas a la API
+   */
+  async ensureValidToken() {
+    const savedToken = authService.loadToken()
+
+    if (!savedToken) {
+      throw new Error('No hay token de acceso. Por favor inicia sesión nuevamente.')
+    }
+
+    // Si el token está por expirar (menos de 5 min), solicitar uno nuevo
+    if (authService.isTokenExpired(savedToken)) {
+      console.log('⚠️ Token expirado, solicitando nuevo token...')
+
+      // Forzar nuevo login para obtener token fresco
+      return new Promise((resolve, reject) => {
+        if (!authService.tokenClient) {
+          reject(new Error('Token client no inicializado'))
+          return
+        }
+
+        // Configurar callback temporal
+        const originalCallback = authService.tokenClient.callback
+        authService.tokenClient.callback = (response) => {
+          if (response.error) {
+            reject(new Error(`Error refrescando token: ${response.error}`))
+            return
+          }
+
+          if (response.access_token) {
+            authService.accessToken = response.access_token
+            authService.saveToken(response)
+            gapi.client.setToken({ access_token: response.access_token })
+            console.log('✅ Token refrescado correctamente')
+            resolve()
+          }
+        }
+
+        // Solicitar nuevo token
+        authService.tokenClient.requestAccessToken({ prompt: '' })
+      })
+    }
+
+    // Token válido, asegurar que está configurado en gapi
+    gapi.client.setToken({ access_token: savedToken.access_token })
+  }
+
+  /**
    * Inicializar servicio
    */
   async init() {
@@ -35,6 +82,7 @@ class GoogleSheetsService {
     const savedId = localStorage.getItem('spreadsheet_id')
     if (savedId) {
       try {
+        await this.ensureValidToken()
         await this.verifySpreadsheet(savedId)
         this.spreadsheetId = savedId
         console.log(`✅ Spreadsheet cargado: ${savedId}`)
@@ -70,6 +118,9 @@ class GoogleSheetsService {
     console.log(`📄 Creando nuevo spreadsheet: "${title}"`)
 
     try {
+      // Asegurar token válido antes de crear
+      await this.ensureValidToken()
+
       const response = await gapi.client.sheets.spreadsheets.create({
         properties: {
           title: `${title} - ${new Date().toISOString().split('T')[0]}`
@@ -135,6 +186,9 @@ class GoogleSheetsService {
     console.log(`🔗 Conectando a spreadsheet: ${spreadsheetId}`)
 
     try {
+      // Asegurar que el token es válido antes de verificar
+      await this.ensureValidToken()
+
       await this.verifySpreadsheet(spreadsheetId)
       this.spreadsheetId = spreadsheetId
       localStorage.setItem('spreadsheet_id', spreadsheetId)
