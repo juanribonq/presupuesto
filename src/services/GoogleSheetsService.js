@@ -826,13 +826,13 @@ class GoogleSheetsService {
       throw new Error('No hay spreadsheet activo')
     }
 
-    console.log('📥 Leyendo presupuestos desde Sheets...')
+    console.log('📥 Leyendo presupuestos y subcategorías desde Sheets...')
 
     try {
       const exists = await this.sheetExists('Presupuesto')
       if (!exists) {
         console.log('ℹ️ Hoja "Presupuesto" no existe')
-        return { subcategoryBudgets: {}, totalIncome: 0 }
+        return { subcategoryBudgets: {}, totalIncome: 0, subcategoryList: [] }
       }
 
       // Leer datos de la hoja (saltando headers)
@@ -842,18 +842,24 @@ class GoogleSheetsService {
       })
 
       const rows = response.result.values || []
+      console.log(`   → ${rows.length} filas leídas de la hoja Presupuesto`)
+
       const subcategoryBudgets = {}
+      const subcategoryList = [] // Nueva: lista de subcategorías encontradas
       let totalIncome = 0
 
-      // Importar para obtener subcategorías
-      const { MAIN_CATEGORIES } = await import('../models/CategoryNew.js')
+      // Importar para obtener subcategorías default
+      const { MAIN_CATEGORIES, DEFAULT_SUBCATEGORIES } = await import('../models/CategoryNew.js')
 
-      rows.forEach(row => {
+      rows.forEach((row, index) => {
         const [mainCatName, subcatName, budgetValue, , , , , , ] = row
+
+        console.log(`   [Fila ${index + 2}] A="${mainCatName || ''}" B="${subcatName || ''}" C="${budgetValue || ''}"`)
 
         // Detectar si es la fila de ingreso
         if (mainCatName && mainCatName.includes('INGRESO MENSUAL')) {
           totalIncome = parseFloat(budgetValue) || 0
+          console.log(`   💰 Ingreso total detectado: ${totalIncome}`)
           return
         }
 
@@ -861,22 +867,50 @@ class GoogleSheetsService {
         if (subcatName && subcatName.trim() !== '' && budgetValue) {
           // Limpiar nombre: remover emojis, espacios extras, y símbolos al inicio
           let cleanSubcatName = subcatName.trim()
+          console.log(`   🧹 Limpiando: "${subcatName}" → "${cleanSubcatName}"`)
 
           // Remover emojis y símbolos especiales al inicio (incluyendo espacios dobles)
           cleanSubcatName = cleanSubcatName.replace(/^[\s\uD800-\uDFFF\u2702-\u27B0\uF000-\uFFFF\u00A9\u00AE\u203C-\u3299]+/g, '')
           cleanSubcatName = cleanSubcatName.replace(/^\s+/, '') // Trim espacios adicionales
+          console.log(`   🧹 Después de limpiar emojis: "${cleanSubcatName}"`)
 
           const budget = parseFloat(budgetValue)
+          console.log(`   💵 Valor presupuesto parseado: ${budget} (original: "${budgetValue}")`)
 
           if (!isNaN(budget) && budget > 0 && cleanSubcatName) {
-            console.log(`   📊 Presupuesto leído: "${cleanSubcatName}" = ${budget}`)
+            console.log(`   ✅ Presupuesto guardado: "${cleanSubcatName}" = ${budget}`)
             subcategoryBudgets[cleanSubcatName] = budget
+
+            // Buscar subcategoría en DEFAULT_SUBCATEGORIES para obtener datos completos
+            const defaultSubcat = DEFAULT_SUBCATEGORIES.find(sub => {
+              const normalized1 = sub.name.trim().toLowerCase()
+              const normalized2 = cleanSubcatName.trim().toLowerCase()
+              return normalized1 === normalized2
+            })
+
+            if (defaultSubcat) {
+              subcategoryList.push({
+                id: defaultSubcat.id,
+                mainCategoryId: defaultSubcat.mainCategoryId,
+                name: defaultSubcat.name,
+                icon: defaultSubcat.icon,
+                budget: budget,
+                details: defaultSubcat.details || []
+              })
+              console.log(`      ✅ Subcategoría encontrada en defaults: "${defaultSubcat.name}"`)
+            } else {
+              console.log(`      ⚠️ Subcategoría NO encontrada en defaults: "${cleanSubcatName}"`)
+            }
+          } else {
+            console.log(`   ⚠️ Presupuesto NO guardado (budget=${budget}, isNaN=${isNaN(budget)}, cleanName="${cleanSubcatName}")`)
           }
         }
       })
 
-      console.log(`✅ Presupuestos leídos desde Sheets: ${Object.keys(subcategoryBudgets).length} subcategorías`)
-      return { subcategoryBudgets, totalIncome }
+      console.log(`✅ Total presupuestos leídos: ${Object.keys(subcategoryBudgets).length} subcategorías`)
+      console.log(`✅ Total subcategorías encontradas: ${subcategoryList.length}`)
+      console.log('📋 Detalle de presupuestos:', subcategoryBudgets)
+      return { subcategoryBudgets, totalIncome, subcategoryList }
 
     } catch (error) {
       console.error('❌ Error leyendo presupuestos:', error)
@@ -1315,44 +1349,32 @@ class GoogleSheetsService {
         updatedAt: new Date().toISOString()
       }))
 
-      // 3. Leer presupuestos desde hoja "Presupuesto"
-      console.log('   → Leyendo presupuestos...')
+      // 3. Leer presupuestos y subcategorías desde hoja "Presupuesto"
+      console.log('   → Leyendo presupuestos y subcategorías desde Sheet...')
       const budgetData = await this.readBudgetFromSheets()
 
-      // Importar DEFAULT_SUBCATEGORIES para estructura
-      const { DEFAULT_SUBCATEGORIES } = await import('../models/CategoryNew.js')
+      // ✅ NUEVA LÓGICA: Usar subcategorías que vienen del Sheet (NO todas las defaults)
+      console.log(`   → Total subcategorías encontradas en Sheet: ${budgetData.subcategoryList.length}`)
+      console.log('   → Subcategorías que se restaurarán:', budgetData.subcategoryList.map(s => s.name))
 
-      // Reconstruir subcategorías con presupuestos desde el Sheet
-      console.log('   → Reconstruyendo subcategorías con presupuestos...')
-      restoredData.subcategories = DEFAULT_SUBCATEGORIES.map(defaultSub => {
-        // Buscar presupuesto por nombre exacto
-        let budget = budgetData.subcategoryBudgets[defaultSub.name] || 0
-
-        // Si no se encuentra, intentar buscar sin tener en cuenta espacios extras
-        if (budget === 0) {
-          const normalizedName = defaultSub.name.trim().toLowerCase()
-          const matchingKey = Object.keys(budgetData.subcategoryBudgets).find(key =>
-            key.trim().toLowerCase() === normalizedName
-          )
-          if (matchingKey) {
-            budget = budgetData.subcategoryBudgets[matchingKey]
-            console.log(`   ✅ Presupuesto encontrado para "${defaultSub.name}": ${budget} (match: "${matchingKey}")`)
-          }
-        } else {
-          console.log(`   ✅ Presupuesto restaurado: "${defaultSub.name}" = ${budget}`)
-        }
+      // Usar solo las subcategorías que existen en el Sheet
+      restoredData.subcategories = budgetData.subcategoryList.map((sheetSubcat, index) => {
+        console.log(`\n   [${index + 1}/${budgetData.subcategoryList.length}] Restaurando: "${sheetSubcat.name}" con presupuesto ${sheetSubcat.budget}`)
 
         return {
-          id: defaultSub.id || crypto.randomUUID(),
-          mainCategoryId: defaultSub.mainCategoryId,
-          name: defaultSub.name,
-          icon: defaultSub.icon,
-          budget: budget,
-          details: defaultSub.details || [],
+          id: sheetSubcat.id,
+          mainCategoryId: sheetSubcat.mainCategoryId,
+          name: sheetSubcat.name,
+          icon: sheetSubcat.icon,
+          budget: sheetSubcat.budget,
+          details: sheetSubcat.details || [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
       })
+
+      console.log(`\n   ✅ Total subcategorías restauradas: ${restoredData.subcategories.length}`)
+      console.log(`   ✅ Total con presupuesto > 0: ${restoredData.subcategories.filter(s => s.budget > 0).length}`)
 
       // Guardar presupuesto del mes actual
       const currentMonth = this.getCurrentMonth()
