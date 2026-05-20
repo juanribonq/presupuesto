@@ -1,0 +1,31 @@
+{
+  "name": "app-presupuesto",
+  "version": "1.0.0",
+  "description": "PWA para gestión de presupuesto personal con sincronización a Google Sheets",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .js",
+    "format": "prettier --write \"src/**/*.{js,css,html}\""
+  },
+  "keywords": [
+    "pwa",
+    "presupuesto",
+    "finanzas",
+    "google-sheets"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "idb": "^8.0.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "vite-plugin-pwa": "^0.17.0",
+    "workbox-window": "^7.0.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0"
+  }
+}
