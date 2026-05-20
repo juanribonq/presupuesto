@@ -604,11 +604,43 @@ async function handleConnectSheet() {
       showToast('Google Sheet creado correctamente', 'success')
     } else {
       // Conectar a existente
-      const spreadsheetId = prompt(
-        'Ingresa el ID del Google Sheet:\n\n' +
-        '⚠️ Recuerda: Cualquier dato en ese Sheet será sobrescrito'
+      const sheetUrl = prompt(
+        '📋 Pega la URL completa de tu Google Sheet:\n\n' +
+        '💡 Ejemplo:\n' +
+        'https://docs.google.com/spreadsheets/d/1abc123xyz456/edit\n\n' +
+        '📱 Cómo obtener la URL:\n' +
+        '1. Abre el Google Sheet en tu navegador\n' +
+        '2. Copia la URL completa de la barra de direcciones\n' +
+        '3. Pégala aquí\n\n' +
+        '💡 Si ya tienes la app en otro dispositivo:\n' +
+        '   Ve a Settings → Copia el ID mostrado ahí\n\n' +
+        '⚠️ Los datos locales se sobrescribirán con los del Sheet'
       )
-      if (spreadsheetId) {
+
+      if (sheetUrl) {
+        // Extraer ID desde la URL usando regex
+        // Formatos soportados:
+        // - https://docs.google.com/spreadsheets/d/ID/edit
+        // - https://docs.google.com/spreadsheets/d/ID
+        // - Solo el ID directamente
+        const match = sheetUrl.trim().match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)
+
+        let spreadsheetId
+        if (match && match[1]) {
+          // Se encontró el ID en la URL
+          spreadsheetId = match[1]
+          console.log(`✅ ID extraído de la URL: ${spreadsheetId}`)
+        } else if (/^[a-zA-Z0-9-_]+$/.test(sheetUrl.trim())) {
+          // Parece ser solo el ID directamente (sin URL)
+          spreadsheetId = sheetUrl.trim()
+          console.log(`✅ ID proporcionado directamente: ${spreadsheetId}`)
+        } else {
+          // No se pudo extraer el ID
+          showToast('URL inválida. Asegúrate de copiar la URL completa del Google Sheet', 'error')
+          showLoading(false)
+          return
+        }
+
         await googleSheetsService.connectSpreadsheet(spreadsheetId)
         showToast('Conectado a Google Sheet', 'success')
       } else {
@@ -3028,8 +3060,27 @@ async function showSettingsView() {
               <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 0.5rem;">
                 Sincronización activa con Google Sheets
               </div>
+
+              <!-- Sheet ID -->
+              <div style="background: var(--bg-secondary); padding: 0.75rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 0.25rem;">
+                  ID del Sheet:
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <code style="flex: 1; font-size: 11px; background: var(--bg-tertiary); padding: 0.5rem; border-radius: 4px; overflow-x: auto; font-family: var(--font-mono);">
+                    ${googleSheetsService.spreadsheetId}
+                  </code>
+                  <button id="copy-sheet-id-btn" class="btn btn-secondary btn-sm" style="padding: 0.5rem; flex-shrink: 0;" title="Copiar ID">
+                    📋
+                  </button>
+                </div>
+                <div style="font-size: 10px; color: var(--text-tertiary); margin-top: 0.5rem;">
+                  💡 Usa este ID para conectar desde otro dispositivo
+                </div>
+              </div>
+
               ${lastSync ? `
-                <div style="font-size: 11px; color: var(--text-tertiary);">
+                <div style="font-size: 11px; color: var(--text-tertiary); margin-bottom: 0.75rem;">
                   Última sincronización: ${formatDate(lastSync.timestamp)}
                 </div>
               ` : ''}
@@ -3173,6 +3224,21 @@ async function showSettingsView() {
   const disconnectSheetBtn = document.getElementById('disconnect-sheet-btn')
   if (disconnectSheetBtn) {
     disconnectSheetBtn.addEventListener('click', handleDisconnectSheet)
+  }
+
+  const copySheetIdBtn = document.getElementById('copy-sheet-id-btn')
+  if (copySheetIdBtn) {
+    copySheetIdBtn.addEventListener('click', () => {
+      const sheetId = googleSheetsService.spreadsheetId
+      if (sheetId) {
+        navigator.clipboard.writeText(sheetId).then(() => {
+          showToast('ID copiado al portapapeles', 'success')
+        }).catch(err => {
+          console.error('Error copiando ID:', err)
+          showToast('Error al copiar ID', 'error')
+        })
+      }
+    })
   }
 
   const connectSheetSettings = document.getElementById('connect-sheet-settings')
