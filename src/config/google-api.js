@@ -16,7 +16,7 @@ export const GOOGLE_CONFIG = {
   apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
 
   // Configuración pública (OK para commitear)
-  scope: 'https://www.googleapis.com/auth/spreadsheets',
+  scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
   discoveryDocs: [
     'https://sheets.googleapis.com/$discovery/rest?version=v4'
   ],
