@@ -9,6 +9,9 @@
 *.secret
 config/secrets.js
 
+# Documentation with credentials (keep placeholders only)
+# STATUS.md can be committed but verify no real credentials are present
+
 # Dependencies
 node_modules/
 

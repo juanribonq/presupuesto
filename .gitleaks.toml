@@ -1,0 +1,32 @@
+title = "Gitleaks Config for Presupuesto"
+
+[extend]
+useDefault = true
+
+# Configuración específica para detectar credenciales de Google
+[[rules]]
+id = "google-api-key"
+description = "Google API Key"
+regex = '''AIza[0-9A-Za-z\-_]{35}'''
+tags = ["key", "google"]
+
+[[rules]]
+id = "google-oauth-client-id"
+description = "Google OAuth Client ID"
+regex = '''[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com'''
+tags = ["client", "google"]
+
+# Allowlist para archivos que pueden contener placeholders
+[allowlist]
+paths = [
+  '''.env.example''',
+  '''.env.local''',
+  '''dist/''',
+  '''node_modules/''',
+]
+
+regexes = [
+  '''your_google_api_key_here''',
+  '''your_google_client_id_here''',
+  '''TU_NUEVA_API_KEY_AQUI''',
+]
